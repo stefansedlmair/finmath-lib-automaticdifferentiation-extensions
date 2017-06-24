@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
@@ -34,7 +35,7 @@ public class RandomVariableAADv2 implements RandomVariableDifferentiableInterfac
 	private static AtomicLong randomVariableUID = new AtomicLong(0);
 
 	/* static elements of the class are shared between all members */
-	private static enum OperatorType {
+	public static enum OperatorType {
 		ADD, MULT, DIV, SUB, SQUARED, SQRT, LOG, SIN, COS, EXP, INVERT, CAP, FLOOR, ABS, 
 		ADDPRODUCT, ADDRATIO, SUBRATIO, BARRIER, DISCOUNT, ACCURUE, POW, AVERAGE, VARIANCE, 
 		STDEV, MIN, MAX, STDERROR, SVARIANCE
@@ -442,49 +443,46 @@ public class RandomVariableAADv2 implements RandomVariableDifferentiableInterfac
 	public Map<Long, RandomVariableInterface> getGradient(){
 
 		/* get dependence tree */
-		Map<Long, RandomVariableAADv2> getMapOfDependentRandomVariables = mapAllDependentRandomVariableAADv2s();
+		TreeMap<Long, RandomVariableAADv2> mapOfDependentRandomVariables = mapAllDependentRandomVariableAADv2s();
 		
 		/* key set is indicating in which order random variables were generated */
-		Set<Long> keySet = getMapOfDependentRandomVariables.keySet();
+		Set<Long> idsOfDependentRandomVariables = mapOfDependentRandomVariables.keySet();
 		
-		int numberOfDependentRandomVariables = keySet.size();
+		int numberOfDependentRandomVariables = idsOfDependentRandomVariables.size();
 
 		/* catch trivial case here */
 		if(numberOfDependentRandomVariables == 1) 
 			return new HashMap<Long, RandomVariableInterface>()
 				{{put(getID(), new RandomVariable(getFiltrationTime(), isConstant() ? 0.0 : 1.0));}};
 		
-		
-		Long[] idsOfDependentRandomVariables = new Long[numberOfDependentRandomVariables];
-		idsOfDependentRandomVariables = keySet.toArray(idsOfDependentRandomVariables);
-		
-		/*sorts array in ascending ordering */
-		Arrays.sort(idsOfDependentRandomVariables);
-		
+			
 		/*_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_*/
 		
 		Map<Long, RandomVariableInterface> gradient = new HashMap<Long, RandomVariableInterface>();
 		Map<Long, RandomVariableInterface> omegaHat = new HashMap<Long, RandomVariableInterface>();
 
 		/* first entry (with highest variable UID) of omegaHat is set to 1.0 */
-		long variableIndex = idsOfDependentRandomVariables[numberOfDependentRandomVariables-1];
+		long lastVariableIndex = mapOfDependentRandomVariables.lastKey();
 		
-		omegaHat.put(variableIndex, new RandomVariable(1.0));
+		omegaHat.put(lastVariableIndex, new RandomVariable(1.0));
 		
-		if(getMapOfDependentRandomVariables.get(variableIndex).isVariable())
-			gradient.put(variableIndex, omegaHat.get(variableIndex));
+		if(mapOfDependentRandomVariables.get(lastVariableIndex).isVariable())
+			gradient.put(lastVariableIndex, omegaHat.get(lastVariableIndex));
 		
-		/* now  */
-		for(int i = numberOfDependentRandomVariables-2; i >= 0; i--){
-			variableIndex = idsOfDependentRandomVariables[i];
+		
+//		for(int i = numberOfDependentRandomVariables-2; i >= 0; i--){
+//			variableIndex = mapOfDependentRandomVariables[i];
+		
+		for(long variableIndex : mapOfDependentRandomVariables.descendingKeySet().tailSet(lastVariableIndex, false)){
+			
 			RandomVariableInterface newOmegaHatEntry = new RandomVariable(0.0);
 			
-			for(long functionIndex : getMapOfDependentRandomVariables.get(variableIndex).getChildrenUIDs()){
-				RandomVariableInterface D_i_j = getMapOfDependentRandomVariables.get(functionIndex).partialDerivativeWithRespectTo(variableIndex);
+			for(long functionIndex : mapOfDependentRandomVariables.get(variableIndex).getChildrenUIDs()){
+				RandomVariableInterface D_i_j = mapOfDependentRandomVariables.get(functionIndex).partialDerivativeWithRespectTo(variableIndex);
 				newOmegaHatEntry = newOmegaHatEntry.addProduct(D_i_j, omegaHat.get(functionIndex));
 			}
 			
-			if(getMapOfDependentRandomVariables.get(variableIndex).isVariable())
+			if(mapOfDependentRandomVariables.get(variableIndex).isVariable())
 				gradient.put(variableIndex, newOmegaHatEntry);
 			
 			omegaHat.put(variableIndex, newOmegaHatEntry);
@@ -602,8 +600,8 @@ public class RandomVariableAADv2 implements RandomVariableDifferentiableInterfac
 	
 	
 	/* get the dependence tree for a instance of RandomVariableAADv2 */
-	private Map<Long, RandomVariableAADv2> mapAllDependentRandomVariableAADv2s(){
-		Map<Long, RandomVariableAADv2> mapOfDependenRandomVariableAADv2s = new HashMap<Long, RandomVariableAADv2>();
+	private TreeMap<Long, RandomVariableAADv2> mapAllDependentRandomVariableAADv2s(){
+		TreeMap<Long, RandomVariableAADv2> mapOfDependenRandomVariableAADv2s = new TreeMap<Long, RandomVariableAADv2>();
 		
 		/* add the variable it self */
 		if(!mapOfDependenRandomVariableAADv2s.containsKey(getID())) mapOfDependenRandomVariableAADv2s.put(getID(), this);
