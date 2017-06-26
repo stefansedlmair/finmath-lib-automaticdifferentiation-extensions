@@ -1061,12 +1061,12 @@ public class RandomVariableAADv2 implements RandomVariableDifferentiableInterfac
 
 	@Override
 	public IntToDoubleFunction getOperator() {
-		throw new UnsupportedOperationException("Not supported.");
+		return getRandomVariableInterface().getOperator();
 	}
 
 	@Override
 	public DoubleStream getRealizationsStream() {
-		throw new UnsupportedOperationException("Not supported.");
+		return getRandomVariableInterface().getRealizationsStream();
 	}
 
 	@Override
