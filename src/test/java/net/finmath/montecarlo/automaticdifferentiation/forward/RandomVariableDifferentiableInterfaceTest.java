@@ -34,7 +34,8 @@ public class RandomVariableDifferentiableInterfaceTest {
 	@Parameters
     public static Collection<Object[]> data(){
         return Arrays.asList(new Object[][] {
-        	{new RandomVariableADFactory()}
+        	{new RandomVariableADFactory(false)},
+        	{new RandomVariableADFactory(true)}
         });
     }
 
