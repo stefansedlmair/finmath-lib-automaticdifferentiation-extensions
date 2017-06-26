@@ -12,11 +12,10 @@ import net.finmath.stochastic.RandomVariableInterface;
  */
 public class RandomVariableADFactory extends AbstractRandomVariableFactory {
 
-	/**
-	 * 
-	 */
-	public RandomVariableADFactory() {
-		// TODO Auto-generated constructor stub
+	private final boolean useMultiThreading;
+
+	public RandomVariableADFactory(boolean useMultiThreading) {
+		this.useMultiThreading = useMultiThreading;
 	}
 
 	/* (non-Javadoc)
@@ -24,6 +23,7 @@ public class RandomVariableADFactory extends AbstractRandomVariableFactory {
 	 */
 	@Override
 	public RandomVariableInterface createRandomVariable(double time, double value) {
+		RandomVaribaleAD.useMultiThreading(useMultiThreading);
 		return new RandomVaribaleAD(time, value);
 	}
 
@@ -32,6 +32,7 @@ public class RandomVariableADFactory extends AbstractRandomVariableFactory {
 	 */
 	@Override
 	public RandomVariableInterface createRandomVariable(double time, double[] values) {
+		RandomVaribaleAD.useMultiThreading(useMultiThreading);
 		return new RandomVaribaleAD(time, values);
 	}
 
