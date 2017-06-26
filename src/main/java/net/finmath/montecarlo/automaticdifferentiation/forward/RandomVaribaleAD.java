@@ -3,12 +3,22 @@
  */
 package net.finmath.montecarlo.automaticdifferentiation.forward;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
@@ -19,11 +29,16 @@ import net.finmath.functions.DoubleTernaryOperator;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.RandomVariableFactory;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
+import net.finmath.optimizer.SolverException;
 import net.finmath.stochastic.RandomVariableInterface;
 
 /**
- * @author mdm33ee
+ * Implementation of the {@link RandomVariableDifferentiableInterface} using the the forward mode of 
+ * the automatic differentiation algorithm.
+ * 
+ * @author Stefan Sedlmair
  *
+ * @version 0.1
  */
 public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 
@@ -49,10 +64,12 @@ public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 
 	/*
 	 * factory for the production of random variables that are not for
-	 * associated with the AD algorithm, thus offline
+	 * associated with the AD algorithm, thus offline.
+	 * 
+	 * TODO: can the factory be declared non static?
 	 */
 	private static AbstractRandomVariableFactory offlineFactory = new RandomVariableFactory();
-
+	private static boolean useMultiThreading = true;
 	
 	/** private general construction assigns every new instance a unique id */
 	private RandomVaribaleAD(RandomVariableInterface randomVariableInterface, List<RandomVariableInterface> arguments, OperatorType operator, boolean isConstant) {
@@ -98,8 +115,40 @@ public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 
 		TreeMap<Long, RandomVariableInterface> gradient = new TreeMap<Long, RandomVariableInterface>();
 		
-		for(Long key : getKeySetOfDependentVariables())
-			gradient.put(key, getGradientFor(key));
+		if(!useMultiThreading){
+			for(Long key : getKeySetOfDependentVariables())
+				gradient.put(key, getGradientFor(key));
+		} else {
+			
+			int numberOfThreads = Runtime.getRuntime().availableProcessors();
+			ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+			
+			TreeSet<Long> keySetOfDependentVariables = getKeySetOfDependentVariables();
+			TreeMap<Long, Future<RandomVariableInterface>> futureGradient = new TreeMap<Long, Future<RandomVariableInterface>>();
+			
+			// submit all tasks to executor
+			for(Long key : keySetOfDependentVariables){
+				
+				Callable<RandomVariableInterface> worker = new Callable<RandomVariableInterface>() {
+					public RandomVariableInterface call() {
+						 return getGradientFor(key);
+					}
+				};
+		
+				futureGradient.put(key, executor.submit(worker));
+			}
+			
+			for(Long key : futureGradient.keySet())
+				try {
+					gradient.put(key, futureGradient.get(key).get());
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
 		
 		return gradient;
 	}
@@ -122,8 +171,8 @@ public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 		return gradient;
 	}
 	
-	private Set<Long> getKeySetOfDependentVariables() {
-		Set<Long> keySetForGradient = new TreeSet<Long>();
+	private TreeSet<Long> getKeySetOfDependentVariables() {
+		TreeSet<Long> keySetForGradient = new TreeSet<Long>();
 		
 		if(getArguments() != null){
 			for(RandomVariableInterface arg : getArguments()){
@@ -136,6 +185,7 @@ public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 				}
 			}
 		}
+		
 		return keySetForGradient;
 	}
 	
@@ -433,6 +483,10 @@ public class RandomVaribaleAD implements RandomVariableDifferentiableInterface {
 
 	private RandomVariableInterface getValues(){
 		return randomVariable;
+	}
+	
+	public static void useMultiThreading(boolean useMultiThreading){
+		RandomVaribaleAD.useMultiThreading = useMultiThreading;
 	}
 	
 	/*---------------------------------------------------------------------------------------------------------------------------------------------*/
