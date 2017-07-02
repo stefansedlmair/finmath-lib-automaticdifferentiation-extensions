@@ -1,9 +1,8 @@
 /**
  * 
  */
-package net.finmath.montecarlo.automaticdifferentiation.backward;
+package net.finmath.montecarlo.automaticdifferentiation.backward.alternative;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,7 @@ import net.finmath.stochastic.RandomVariableInterface;
  * @author Stefan Sedlmair
  * @version 1.0
  */
-public class RandomVariableDifferentiableAADStochasticNonOptimized implements RandomVariableDifferentiableInterface {
+public class RandomVariableDifferentiableAADPathwise implements RandomVariableDifferentiableInterface {
 
 	private static final long serialVersionUID = 2459373647785530657L;
 
@@ -51,10 +50,10 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 		public OperatorTreeNode(OperatorType operator, List<RandomVariableInterface> arguments) {
 			this(operator,
 					arguments != null ? arguments.stream().map((RandomVariableInterface x) -> {
-						return (x != null && x instanceof RandomVariableDifferentiableAADStochasticNonOptimized) ? ((RandomVariableDifferentiableAADStochasticNonOptimized)x).getOperatorTreeNode(): null;
+						return (x != null && x instanceof RandomVariableDifferentiableAADPathwise) ? ((RandomVariableDifferentiableAADPathwise)x).getOperatorTreeNode(): null;
 					}).collect(Collectors.toList()) : null,
 							arguments != null ? arguments.stream().map((RandomVariableInterface x) -> {
-						return (x != null && x instanceof RandomVariableDifferentiableAADStochasticNonOptimized) ? ((RandomVariableDifferentiableAADStochasticNonOptimized)x).getValues() : x;
+						return (x != null && x instanceof RandomVariableDifferentiableAADPathwise) ? ((RandomVariableDifferentiableAADPathwise)x).getValues() : x;
 					}).collect(Collectors.toList()) : null
 					);
 
@@ -64,6 +63,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 			this.id = indexOfNextRandomVariable.getAndIncrement();
 			this.operator = operator;
 			this.arguments = arguments;
+			// This is the simple modification which reduces memory requirements.
 			this.argumentValues = argumentValues;
 		}
 		
@@ -143,7 +143,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 				resultrandomvariable = X.sub(X.getAverage()*(2.0*X.size()-1.0)/X.size()).mult(2.0/(X.size()-1));
 				break;
 			case ADD:
-				resultrandomvariable = new RandomVariable(1.0);
+				resultrandomvariable = X.size() > 1 ? new RandomVariable(0.0, X.size(), 1.0) : new RandomVariable(1.0);
 				break;
 			case SUB:
 				resultrandomvariable = new RandomVariable(differentialIndex == 0 ? 1.0 : -1.0);
@@ -253,27 +253,27 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	private final RandomVariableInterface values;
 	private final OperatorTreeNode operatorTreeNode;
 
-	public static RandomVariableDifferentiableAADStochasticNonOptimized of(double value) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(value);
+	public static RandomVariableDifferentiableAADPathwise of(double value) {
+		return new RandomVariableDifferentiableAADPathwise(value);
 	}
 
-	public static RandomVariableDifferentiableAADStochasticNonOptimized of(RandomVariableInterface randomVariable) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(randomVariable);
+	public static RandomVariableDifferentiableAADPathwise of(RandomVariableInterface randomVariable) {
+		return new RandomVariableDifferentiableAADPathwise(randomVariable);
 	}
 
-	public RandomVariableDifferentiableAADStochasticNonOptimized(double value) {
+	public RandomVariableDifferentiableAADPathwise(double value) {
 		this(new RandomVariable(value), null, null);
 	}
 
-	public RandomVariableDifferentiableAADStochasticNonOptimized(double time, double[] realisations) {
+	public RandomVariableDifferentiableAADPathwise(double time, double[] realisations) {
 		this(new RandomVariable(time, realisations), null, null);
 	}
 
-	public RandomVariableDifferentiableAADStochasticNonOptimized(RandomVariableInterface randomVariable) {
+	public RandomVariableDifferentiableAADPathwise(RandomVariableInterface randomVariable) {
 		this(randomVariable, null, null);
 	}
 
-	private RandomVariableDifferentiableAADStochasticNonOptimized(RandomVariableInterface values, List<RandomVariableInterface> arguments, OperatorType operator) {
+	private RandomVariableDifferentiableAADPathwise(RandomVariableInterface values, List<RandomVariableInterface> arguments, OperatorType operator) {
 		super();
 		this.values = values;
 		this.operatorTreeNode = new OperatorTreeNode(operator, arguments);
@@ -338,7 +338,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getAverageAsRandomVariableAAD(RandomVariableInterface probabilities) {
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getAverage(probabilities)),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(probabilities) }),
 				OperatorType.AVERAGE2);
@@ -346,7 +346,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getVarianceAsRandomVariableAAD(RandomVariableInterface probabilities){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getVariance(probabilities)),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(probabilities) }),
 				OperatorType.VARIANCE2);
@@ -354,7 +354,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface 	getStandardDeviationAsRandomVariableAAD(RandomVariableInterface probabilities){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getStandardDeviation(probabilities)),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(probabilities) }),
 				OperatorType.STDEV2);
@@ -362,7 +362,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface 	getStandardErrorAsRandomVariableAAD(RandomVariableInterface probabilities){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getStandardError(probabilities)),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(probabilities) }),
 				OperatorType.STDERROR2);
@@ -370,7 +370,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getAverageAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getAverage()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.AVERAGE);
@@ -378,7 +378,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getVarianceAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getVariance()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.VARIANCE);
@@ -386,7 +386,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getSampleVarianceAsRandomVariableAAD() {
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getSampleVariance()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.SVARIANCE);
@@ -394,7 +394,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface 	getStandardDeviationAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getStandardDeviation()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.STDEV);
@@ -402,7 +402,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface getStandardErrorAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getStandardError()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.STDERROR);
@@ -410,7 +410,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface 	getMinAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getMin()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.MIN);
@@ -418,7 +418,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	public RandomVariableInterface 	getMaxAsRandomVariableAAD(){
 		/*returns deterministic AAD random variable */
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				new RandomVariable(getMax()),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.MAX);
@@ -513,7 +513,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public double getAverage(RandomVariableInterface probabilities) {
-		return ((RandomVariableDifferentiableAADStochasticNonOptimized) getAverageAsRandomVariableAAD(probabilities)).getValues().getAverage();
+		return ((RandomVariableDifferentiableAADPathwise) getAverageAsRandomVariableAAD(probabilities)).getValues().getAverage();
 	}
 
 	/* (non-Javadoc)
@@ -585,7 +585,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public double getQuantile(double quantile, RandomVariableInterface probabilities) {
-		return ((RandomVariableDifferentiableAADStochasticNonOptimized) getValues()).getValues().getQuantile(quantile, probabilities);
+		return ((RandomVariableDifferentiableAADPathwise) getValues()).getValues().getQuantile(quantile, probabilities);
 	}
 
 	/* (non-Javadoc)
@@ -593,7 +593,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public double getQuantileExpectation(double quantileStart, double quantileEnd) {
-		return ((RandomVariableDifferentiableAADStochasticNonOptimized) getValues()).getValues().getQuantileExpectation(quantileStart, quantileEnd);
+		return ((RandomVariableDifferentiableAADPathwise) getValues()).getValues().getQuantileExpectation(quantileStart, quantileEnd);
 	}
 
 	/* (non-Javadoc)
@@ -622,7 +622,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface cap(double cap) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().cap(cap),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(cap) }),
 				OperatorType.CAP);
@@ -630,7 +630,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface floor(double floor) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().floor(floor),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(floor) }),
 				OperatorType.FLOOR);
@@ -638,7 +638,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface add(double value) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().add(value),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(value) }),
 				OperatorType.ADD);
@@ -646,7 +646,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface sub(double value) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().sub(value),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(value) }),
 				OperatorType.SUB);
@@ -654,7 +654,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface mult(double value) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().mult(value),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(value) }),
 				OperatorType.MULT);
@@ -662,7 +662,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface div(double value) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().div(value),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(value) }),
 				OperatorType.DIV);
@@ -670,7 +670,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface pow(double exponent) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().pow(exponent),
 				Arrays.asList(new RandomVariableInterface[]{ this, new RandomVariable(exponent) }),
 				OperatorType.POW);
@@ -678,7 +678,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface squared() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().squared(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.SQUARED);
@@ -686,7 +686,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface sqrt() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().sqrt(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.SQRT);
@@ -694,7 +694,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface exp() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().exp(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.EXP);
@@ -702,7 +702,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface log() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().log(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.LOG);
@@ -710,7 +710,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface sin() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().sin(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.SIN);
@@ -721,7 +721,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableInterface cos() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().cos(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.COS);
@@ -732,7 +732,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableInterface add(RandomVariableInterface randomVariable) {	
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().add(randomVariable),
 				Arrays.asList(new RandomVariableInterface[]{ this, randomVariable }),
 				OperatorType.ADD);
@@ -743,7 +743,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableInterface sub(RandomVariableInterface randomVariable) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().sub(randomVariable),
 				Arrays.asList(new RandomVariableInterface[]{ this, randomVariable }),
 				OperatorType.SUB);
@@ -754,7 +754,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableDifferentiableInterface mult(RandomVariableInterface randomVariable) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().mult(randomVariable),
 				Arrays.asList(new RandomVariableInterface[]{ this, randomVariable }),
 				OperatorType.MULT);
@@ -762,7 +762,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface div(RandomVariableInterface randomVariable) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().div(randomVariable),
 				Arrays.asList(new RandomVariableInterface[]{ this, randomVariable }),
 				OperatorType.DIV);
@@ -770,7 +770,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface cap(RandomVariableInterface cap) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().cap(cap),
 				Arrays.asList(new RandomVariableInterface[]{ this, cap }),
 				OperatorType.CAP);
@@ -778,7 +778,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface floor(RandomVariableInterface floor) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().cap(floor),
 				Arrays.asList(new RandomVariableInterface[]{ this, floor }),
 				OperatorType.FLOOR);
@@ -789,7 +789,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableInterface accrue(RandomVariableInterface rate, double periodLength) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().accrue(rate, periodLength),
 				Arrays.asList(new RandomVariableInterface[]{ this, rate, new RandomVariable(periodLength) }),
 				OperatorType.ACCRUE);
@@ -797,7 +797,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface discount(RandomVariableInterface rate, double periodLength) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().discount(rate, periodLength),
 				Arrays.asList(new RandomVariableInterface[]{ this, rate, new RandomVariable(periodLength) }),
 				OperatorType.DISCOUNT);
@@ -805,7 +805,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface barrier(RandomVariableInterface trigger, RandomVariableInterface valueIfTriggerNonNegative, RandomVariableInterface valueIfTriggerNegative) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().barrier(trigger, valueIfTriggerNonNegative, valueIfTriggerNegative),
 				Arrays.asList(new RandomVariableInterface[]{ trigger, valueIfTriggerNonNegative, valueIfTriggerNegative }),
 				OperatorType.BARRIER);
@@ -813,7 +813,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface barrier(RandomVariableInterface trigger, RandomVariableInterface valueIfTriggerNonNegative, double valueIfTriggerNegative) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().barrier(trigger, valueIfTriggerNonNegative, valueIfTriggerNegative),
 				Arrays.asList(new RandomVariableInterface[]{ trigger, valueIfTriggerNonNegative, new RandomVariable(valueIfTriggerNegative) }),
 				OperatorType.BARRIER);
@@ -821,7 +821,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface invert() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().invert(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.INVERT);
@@ -829,7 +829,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface abs() {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().abs(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.ABS);
@@ -840,7 +840,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 	 */
 	@Override
 	public RandomVariableInterface addProduct(RandomVariableInterface factor1, double factor2) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().addProduct(factor1, factor2),
 				Arrays.asList(new RandomVariableInterface[]{ this, factor1, new RandomVariable(factor2) }),
 				OperatorType.ADDPRODUCT);
@@ -848,7 +848,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface addProduct(RandomVariableInterface factor1, RandomVariableInterface factor2) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().addProduct(factor1, factor2),
 				Arrays.asList(new RandomVariableInterface[]{ this, factor1, factor2 }),
 				OperatorType.ADDPRODUCT);
@@ -856,7 +856,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface addRatio(RandomVariableInterface numerator, RandomVariableInterface denominator) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().addRatio(numerator, denominator),
 				Arrays.asList(new RandomVariableInterface[]{ this, numerator, denominator }),
 				OperatorType.ADDRATIO);
@@ -864,7 +864,7 @@ public class RandomVariableDifferentiableAADStochasticNonOptimized implements Ra
 
 	@Override
 	public RandomVariableInterface subRatio(RandomVariableInterface numerator, RandomVariableInterface denominator) {
-		return new RandomVariableDifferentiableAADStochasticNonOptimized(
+		return new RandomVariableDifferentiableAADPathwise(
 				getValues().subRatio(numerator, denominator),
 				Arrays.asList(new RandomVariableInterface[]{ this, numerator, denominator }),
 				OperatorType.SUBRATIO);
