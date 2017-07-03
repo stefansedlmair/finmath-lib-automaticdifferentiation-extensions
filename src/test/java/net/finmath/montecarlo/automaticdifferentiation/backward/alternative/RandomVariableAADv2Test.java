@@ -11,7 +11,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import net.finmath.montecarlo.RandomVariable;
-import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAAD;
+import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2;
 import net.finmath.stochastic.RandomVariableInterface;
 
@@ -26,10 +26,7 @@ public class RandomVariableAADv2Test {
 
 	@Test
 	public void testRandomVariableDeterministc() {
-
-		RandomVariableAAD.resetArrayListOfAllAADRandomVariables();
-
-		
+	
 		// Create a random variable with a constant
 		RandomVariableInterface randomVariable = new RandomVariableAADv2(2.0);
 		
@@ -50,8 +47,6 @@ public class RandomVariableAADv2Test {
 
 	@Test
 	public void testRandomVariableStochastic() {
-
-		RandomVariableAAD.resetArrayListOfAllAADRandomVariables();
 
 		// Create a stochastic random variable
 		RandomVariableInterface randomVariable2 = new RandomVariableAADv2(0.0,
