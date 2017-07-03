@@ -5,7 +5,14 @@ package net.finmath.rootfinder;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import net.finmath.concurrency.FutureWrapper;
 import net.finmath.functions.LinearAlgebra;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.RandomVariableFactory;
@@ -36,6 +43,9 @@ public class LevenbergMarquardtSolver implements RandomVariableDifferentiableMul
 	/* predefine variables to  */
 	private final RandomVariableInterface targetFunctionValue;						/* y 			*/
 	private final RandomVariableInterface uncertainties;							/* \sigma 		*/
+	
+	/*multithreaded option - TODO: slower than serial implementation! WHY? */
+	private boolean useMultithreading = false;
 
 	public LevenbergMarquardtSolver(TreeMap<Long, RandomVariableInterface> initialValue, RandomVariableInterface targetFunctionValue,
 			RandomVariableInterface uncertainties) {
@@ -110,10 +120,53 @@ public class LevenbergMarquardtSolver implements RandomVariableDifferentiableMul
 		}
 		
 		double[][] deltaArray = new double[numberOfRealizations][numberOfVariables];
-
+		
 		// TODO: possibly parallelisable or use giant sparse matrix and solve one linear equation
-		for(int zIndex = 0; zIndex < numberOfRealizations; zIndex++)
-			deltaArray[zIndex] = LinearAlgebra.solveLinearEquationSymmetric(A[zIndex], b[zIndex]);
+		if(useMultithreading){
+			// We do not allocate more threads the twice the number of processors.
+			int numberOfThreads = Math.min(Math.max(2 * Runtime.getRuntime().availableProcessors(),1), numberOfRealizations);
+			ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+				
+			Vector<Future<double[]>> deltasPerRealization = new Vector<Future<double[]>>();
+			deltasPerRealization.setSize(numberOfRealizations);
+			
+			// worker
+			for(int zIndex = 0; zIndex < numberOfRealizations; zIndex++){
+								
+				final double[][] 	thread_A = A[zIndex];
+				final double[]		thread_b = b[zIndex];
+				
+				Callable<double[]> getDeltaPerRealization = new Callable<double[]>() {
+					@Override
+					public double[] call() throws Exception {
+						return LinearAlgebra.solveLinearEquationSymmetric(thread_A, thread_b);
+
+					}
+				};
+				
+				executor.submit(getDeltaPerRealization);
+				
+				Future<double[]> result = null;
+				try {
+					result = new FutureWrapper<double[]>(getDeltaPerRealization.call());
+				} catch (Exception e) {}
+				
+				deltasPerRealization.set(zIndex, result);
+			}
+			
+			for(int zIndex = 0; zIndex < numberOfRealizations; zIndex++){
+				try {
+					deltaArray[zIndex] = deltasPerRealization.get(zIndex).get();
+				} catch (InterruptedException | ExecutionException e) {}
+			}			
+			
+			executor.shutdown();
+			
+		} else {
+			// serial implementation
+			for(int zIndex = 0; zIndex < numberOfRealizations; zIndex++)
+				deltaArray[zIndex] = LinearAlgebra.solveLinearEquationSymmetric(A[zIndex], b[zIndex]);
+		}		
 		
 		// re-associate the deltas with their parameter ids
 		TreeMap<Long, RandomVariableInterface> delta = new TreeMap<>();
