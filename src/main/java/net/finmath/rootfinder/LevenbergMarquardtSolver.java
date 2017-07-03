@@ -111,7 +111,7 @@ public class LevenbergMarquardtSolver implements RandomVariableDifferentiableMul
 		
 		double[][] deltaArray = new double[numberOfRealizations][numberOfVariables];
 
-		// TODO: possibly parallelisable
+		// TODO: possibly parallelisable or use giant sparse matrix and solve one linear equation
 		for(int zIndex = 0; zIndex < numberOfRealizations; zIndex++)
 			deltaArray[zIndex] = LinearAlgebra.solveLinearEquationSymmetric(A[zIndex], b[zIndex]);
 		
@@ -140,7 +140,6 @@ public class LevenbergMarquardtSolver implements RandomVariableDifferentiableMul
     	double currentAccuracy = targetFunctionValue.sub(currentFunctionValue).div(uncertainties).squared()
     			.getAverage(randomVariableFactory.createRandomVariable(1.0));
     	
-    	// TODO: do this if-loop for every realization to improve performance
     	if(currentAccuracy < getAccuracy())
 		{
 			accuracy			= currentAccuracy;

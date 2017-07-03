@@ -16,6 +16,7 @@ import junit.framework.Assert;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
+import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAAD2Factory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2Factory;
 import net.finmath.optimizer.LevenbergMarquardt;
@@ -34,7 +35,9 @@ public class LevenbergMarquardtSolverTest {
 	@Parameters
     public static Collection<Object[]> data(){
         return Arrays.asList(new Object[][] {
-        	{new RandomVariableDifferentiableAADFactory()}
+        	{new RandomVariableDifferentiableAAD2Factory()},
+        	{new RandomVariableDifferentiableAADFactory()},
+        	{new RandomVariableAADv2Factory()}
         });
     }
 
@@ -46,7 +49,7 @@ public class LevenbergMarquardtSolverTest {
     }
     
 	@Test
-	public void SimpleSolvingProblem() {
+	public void PolynomialFittingTest() {
 	
 		/* --------------------- problem set up -------------------------*/
 		
@@ -54,7 +57,7 @@ public class LevenbergMarquardtSolverTest {
 		MersenneTwister RNG = new MersenneTwister(seed);
 		
 		int numberOfRealization = (int)Math.pow(10, 6);
-		int numberOfArguments 	= 5;
+		int numberOfArguments 	= 10;
 		
 		// create random vectors for arguments
 		TreeMap<Long, RandomVariableInterface> initialArguments = new TreeMap<>();
@@ -92,8 +95,11 @@ public class LevenbergMarquardtSolverTest {
 
 		RandomVariableDifferentiableInterface[] nextParametersArray = new RandomVariableDifferentiableInterface[numberOfArguments];
 
+		long totalTime = 0;
 		
-		while(LMSolver.getAccuracy() > targetAccuracy && LMSolver.getNumberOfIterations() < maxNumberOfIterations && Double.isFinite(LMSolver.getAccuracy())){
+		while(LMSolver.getAccuracy() > targetAccuracy && LMSolver.getNumberOfIterations() < maxNumberOfIterations && Double.isFinite(LMSolver.getLambda())){
+			
+			long startTime = System.currentTimeMillis();
 			
 			TreeMap<Long, RandomVariableInterface> nextParameters = (TreeMap<Long, RandomVariableInterface>) LMSolver.getNextParameters();
 			
@@ -105,11 +111,17 @@ public class LevenbergMarquardtSolverTest {
 			
 			LMSolver.setValueAndDerivative(currentFunctionValue, currentFunctionValue.getGradient());
 			
+			long endTime = System.currentTimeMillis();
+			
 			System.out.println("Step#:    " + LMSolver.getNumberOfIterations());
 			System.out.println("Accuracy: " + LMSolver.getAccuracy());
 			System.out.println("Lambda:   " + LMSolver.getLambda());
+			System.out.println("duration: " + (double)(endTime - startTime)/1000.0 + "s");
 
+			totalTime += endTime - startTime;
 		}
+		
+		System.out.println(randomVariableFactory.getClass().getSimpleName() + ": " + (double)totalTime/1000.0 +"s");
 		
 		Assert.assertTrue(LMSolver.getAccuracy() < targetAccuracy );
 			
