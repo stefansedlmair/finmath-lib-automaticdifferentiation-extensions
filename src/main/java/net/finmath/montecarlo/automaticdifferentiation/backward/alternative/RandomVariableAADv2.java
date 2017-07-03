@@ -479,8 +479,11 @@ public class RandomVariableAADv2 implements RandomVariableDifferentiableInterfac
 			RandomVariableInterface newOmegaHatEntry = new RandomVariable(0.0);
 			
 			for(long functionIndex : mapOfDependentRandomVariables.get(variableIndex).getChildrenUIDs()){
-				RandomVariableInterface D_i_j = mapOfDependentRandomVariables.get(functionIndex).partialDerivativeWithRespectTo(variableIndex);
-				newOmegaHatEntry = newOmegaHatEntry.addProduct(D_i_j, omegaHat.get(functionIndex));
+
+				if(mapOfDependentRandomVariables.containsKey(functionIndex)){				
+					RandomVariableInterface D_i_j = mapOfDependentRandomVariables.get(functionIndex).partialDerivativeWithRespectTo(variableIndex);
+					newOmegaHatEntry = newOmegaHatEntry.addProduct(D_i_j, omegaHat.get(functionIndex));
+				}
 			}
 			
 			if(mapOfDependentRandomVariables.get(variableIndex).isVariable())
