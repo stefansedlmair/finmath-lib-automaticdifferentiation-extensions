@@ -19,6 +19,7 @@ import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentia
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAAD2Factory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2Factory;
+import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv3Factory;
 import net.finmath.optimizer.LevenbergMarquardt;
 import net.finmath.optimizer.SolverException;
 import net.finmath.randomnumbers.MersenneTwister;
@@ -37,6 +38,7 @@ public class LevenbergMarquardtSolverTest {
         return Arrays.asList(new Object[][] {
         	{new RandomVariableDifferentiableAAD2Factory()},
         	{new RandomVariableDifferentiableAADFactory()},
+        	{new RandomVariableAADv3Factory()},
         	{new RandomVariableAADv2Factory()}
         });
     }
@@ -56,7 +58,7 @@ public class LevenbergMarquardtSolverTest {
 		long seed  = 1234;
 		MersenneTwister RNG = new MersenneTwister(seed);
 		
-		int numberOfRealization = (int)Math.pow(10, 6);
+		int numberOfRealization = (int)Math.pow(10, 5);
 		int numberOfArguments 	= 10;
 		
 		// create random vectors for arguments
@@ -96,9 +98,11 @@ public class LevenbergMarquardtSolverTest {
 		RandomVariableDifferentiableInterface[] nextParametersArray = new RandomVariableDifferentiableInterface[numberOfArguments];
 
 		long totalTime = 0;
+		long totalMem = 0;
 		
 		while(LMSolver.getAccuracy() > targetAccuracy && LMSolver.getNumberOfIterations() < maxNumberOfIterations && Double.isFinite(LMSolver.getLambda())){
 			
+			long startMem = getAllocatedMemory();
 			long startTime = System.currentTimeMillis();
 			
 			TreeMap<Long, RandomVariableInterface> nextParameters = (TreeMap<Long, RandomVariableInterface>) LMSolver.getNextParameters();
@@ -112,17 +116,21 @@ public class LevenbergMarquardtSolverTest {
 			LMSolver.setValueAndDerivative(currentFunctionValue, currentFunctionValue.getGradient());
 			
 			long endTime = System.currentTimeMillis();
+			long endMem = getAllocatedMemory();
 			
-			System.out.println("Step#:    " + LMSolver.getNumberOfIterations());
-			System.out.println("Accuracy: " + LMSolver.getAccuracy());
-			System.out.println("Lambda:   " + LMSolver.getLambda());
-			System.out.println("duration: " + (double)(endTime - startTime)/1000.0 + "s");
+//			System.out.println("Step#:..............." + LMSolver.getNumberOfIterations());
+//			System.out.println("Accuracy:............" + LMSolver.getAccuracy());
+//			System.out.println("Lambda:.............." + LMSolver.getLambda());
+//			System.out.println("duration:............" + (double)(endTime - startTime)/1000.0 + "s");
+//			System.out.println("memory consumption:.." + (double)(endMem - startMem)/Math.pow(10, 6) + "Mbyte");
 
 			totalTime += endTime - startTime;
+			totalMem += endMem - startMem;
 		}
-		
-		System.out.println(randomVariableFactory.getClass().getSimpleName() + ": " + (double)totalTime/1000.0 +"s");
-		
+		System.out.println("number of Iterations........................." + LMSolver.getNumberOfIterations());
+		System.out.println("average duration per Iteration..............." + (double)totalTime/ ((double)LMSolver.getNumberOfIterations() *1000.0) +"s ");
+		System.out.println("average memory consumption per Iteration....." + (double)totalMem/ ((double)LMSolver.getNumberOfIterations() * Math.pow(10, 6)) +"Mbyte");
+		System.out.println();
 		Assert.assertTrue(LMSolver.getAccuracy() < targetAccuracy );
 			
 	}
@@ -133,6 +141,12 @@ public class LevenbergMarquardtSolverTest {
 			polynom = polynom.addProduct(a[i], x.pow(i));
 			
 		return (RandomVariableDifferentiableInterface) polynom;
+	}
+	
+	static long getAllocatedMemory() {
+		System.gc();
+		long allocatedMemory = (Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory());
+		return allocatedMemory;
 	}
 
 }
