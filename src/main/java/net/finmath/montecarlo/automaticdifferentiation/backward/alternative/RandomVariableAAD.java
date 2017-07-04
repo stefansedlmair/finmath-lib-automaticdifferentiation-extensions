@@ -389,7 +389,7 @@ public class RandomVariableAAD implements RandomVariableInterface {
 				resultrandomvariable = (variableIndex == getParentIDs()[0]) ? Y : X;
 				break;
 			case DIV:
-				resultrandomvariable = (variableIndex == getParentIDs()[0]) ? Y.invert() : X.div(Y.squared());
+				resultrandomvariable = (variableIndex == getParentIDs()[0]) ? Y.invert() : X.div(Y.squared()).mult(-1);
 				break;
 			case CAP:
 				resultrandomvariable = X.apply(x -> (x > Y.getAverage()) ? 0.0 : 1.0);
@@ -921,6 +921,11 @@ public class RandomVariableAAD implements RandomVariableInterface {
 	@Override
 	public RandomVariableInterface pow(double exponent) {
 		return apply(OperatorType.POW, new RandomVariableInterface[]{this, constructNewAADRandomVariable(exponent)});
+	}
+
+	@Override
+	public RandomVariableInterface average() {
+		return apply(OperatorType.AVERAGE, new RandomVariableInterface[]{this});
 	}
 
 	/* (non-Javadoc)
