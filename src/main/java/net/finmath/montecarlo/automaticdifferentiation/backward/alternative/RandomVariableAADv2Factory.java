@@ -14,6 +14,10 @@ import net.finmath.stochastic.RandomVariableInterface;
  */
 public class RandomVariableAADv2Factory extends AbstractRandomVariableDifferentiableFactory {
 
+	public RandomVariableAADv2Factory() {
+		super();
+	}
+
 	/**
 	 * @param randomVariableFactoryForNonDifferentiable
 	 */
