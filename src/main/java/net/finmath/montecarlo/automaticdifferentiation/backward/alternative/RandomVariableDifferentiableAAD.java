@@ -18,7 +18,6 @@ import java.util.stream.DoubleStream;
 import net.finmath.functions.DoubleTernaryOperator;
 import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
-import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv3.OperatorType;
 import net.finmath.stochastic.RandomVariableInterface;
 
 /**

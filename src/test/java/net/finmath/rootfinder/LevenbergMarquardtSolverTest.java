@@ -20,8 +20,6 @@ import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDi
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2Factory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv3Factory;
-import net.finmath.optimizer.LevenbergMarquardt;
-import net.finmath.optimizer.SolverException;
 import net.finmath.randomnumbers.MersenneTwister;
 import net.finmath.stochastic.RandomVariableInterface;
 

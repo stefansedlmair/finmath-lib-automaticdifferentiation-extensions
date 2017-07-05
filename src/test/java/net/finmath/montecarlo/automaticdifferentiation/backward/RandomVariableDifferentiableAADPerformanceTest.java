@@ -28,7 +28,6 @@ import net.finmath.montecarlo.assetderivativevaluation.AssetModelMonteCarloSimul
 import net.finmath.montecarlo.assetderivativevaluation.BlackScholesModel;
 import net.finmath.montecarlo.assetderivativevaluation.MonteCarloAssetModel;
 import net.finmath.montecarlo.assetderivativevaluation.products.AsianOption;
-import net.finmath.montecarlo.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableDifferentiableAADPathwiseFactory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableDifferentiableAADStochasticNonOptimizedFactory;

@@ -3,7 +3,6 @@
  */
 package net.finmath.montecarlo.automaticdifferentiation.backward.alternative;
 
-import java.security.acl.Owner;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,10 +17,8 @@ import java.util.stream.DoubleStream;
 
 import net.finmath.functions.DoubleTernaryOperator;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
-import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.RandomVariableFactory;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
-import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2.OperatorType;
 import net.finmath.stochastic.RandomVariableInterface;
 
 /**
