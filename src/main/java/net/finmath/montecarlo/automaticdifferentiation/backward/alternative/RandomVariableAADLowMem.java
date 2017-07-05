@@ -830,6 +830,11 @@ public class RandomVariableAADLowMem implements RandomVariableDifferentiableInte
 		return new RandomVariableAADLowMem(OperatorType.POW, new RandomVariableInterface[]{this, new RandomVariableAADLowMem(exponent)});
 	}
 
+	@Override
+	public RandomVariableInterface average() {
+		return new RandomVariableAADLowMem(OperatorType.AVERAGE, new RandomVariableInterface[]{this});
+	}
+
 	/* (non-Javadoc)
 	 * @see net.finmath.stochastic.RandomVariableInterface#squared()
 	 */

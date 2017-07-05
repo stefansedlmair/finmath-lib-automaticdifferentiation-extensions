@@ -18,6 +18,7 @@ import java.util.stream.DoubleStream;
 import net.finmath.functions.DoubleTernaryOperator;
 import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
+import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv3.OperatorType;
 import net.finmath.stochastic.RandomVariableInterface;
 
 /**
@@ -741,6 +742,11 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 	@Override
 	public RandomVariableInterface pow(double exponent) {
 		return apply(OperatorType.POW, new RandomVariableInterface[]{this, new RandomVariable(exponent)});
+	}
+
+	@Override
+	public RandomVariableInterface average() {
+		return apply(OperatorType.AVERAGE, new RandomVariableInterface[]{this});
 	}
 
 	/* (non-Javadoc)

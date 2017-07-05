@@ -770,6 +770,14 @@ public class RandomVariableDifferentiableAAD2 implements RandomVariableDifferent
 				OperatorType.POW);
 	}
 
+	@Override
+	public RandomVariableInterface average() {
+		return new RandomVariableDifferentiableAAD2(
+				getValues().average(),
+				Arrays.asList(new RandomVariableInterface[]{ this }),
+				OperatorType.AVERAGE);
+	}
+
 	/* (non-Javadoc)
 	 * @see net.finmath.stochastic.RandomVariableInterface#squared()
 	 */
