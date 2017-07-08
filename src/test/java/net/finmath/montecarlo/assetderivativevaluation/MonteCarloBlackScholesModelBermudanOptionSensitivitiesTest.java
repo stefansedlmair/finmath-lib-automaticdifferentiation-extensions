@@ -6,21 +6,18 @@
 
 package net.finmath.montecarlo.assetderivativevaluation;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import net.finmath.exception.CalculationException;
-import net.finmath.montecarlo.AbstractMonteCarloProduct;
+import net.finmath.functions.AnalyticFormulas;
+import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.BrownianMotion;
 import net.finmath.montecarlo.RandomVariableFactory;
-import net.finmath.montecarlo.assetderivativevaluation.products.AsianOption;
+import net.finmath.montecarlo.assetderivativevaluation.products.BermudanOption;
 import net.finmath.montecarlo.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
@@ -35,18 +32,7 @@ import net.finmath.time.TimeDiscretizationInterface;
  * @author Christian Fries
  *
  */
-@RunWith(Parameterized.class)
-public class MonteCarloBlackScholesModelSensitivitiesTest {
-
-	@Parameters
-	public static Collection<Object[]> data() {
-		return (Collection<Object[]>) Arrays.asList(
-				new Object[][] { 
-					{ new EuropeanOption(2.0 /* optionMaturity */, 1.05 /* optionStrike */) },
-					{ new AsianOption(2.0 /* optionMaturity */, 1.05 /* optionStrike */, new TimeDiscretization(0.0, 0.5, 1.0, 1.5, 2.0)) },					
-				}
-				);
-	}
+public class MonteCarloBlackScholesModelBermudanOptionSensitivitiesTest {
 
 	// Model properties
 	private final double	modelInitialValue   = 1.0;
@@ -56,16 +42,14 @@ public class MonteCarloBlackScholesModelSensitivitiesTest {
 	// Process discretization properties
 	private final int		numberOfPaths		= 20000;
 	private final int		numberOfTimeSteps	= 10;
-	private final double	deltaT				= 0.25;
-
+	private final double	deltaT				= 0.5;
+	
 	private final int		seed				= 31415;
 
 	// Product properties
-	private final AbstractMonteCarloProduct product;
-
-	public MonteCarloBlackScholesModelSensitivitiesTest(AbstractMonteCarloProduct product) {
-		this.product = product;
-	}
+	private final int		assetIndex = 0;
+	private final double	optionMaturity = 2.0;
+	private final double	optionStrike = 1.05;
 
 	@Test
 	public void testProductAADSensitivities() throws CalculationException {
@@ -91,7 +75,11 @@ public class MonteCarloBlackScholesModelSensitivitiesTest {
 		/*
 		 * Value a call option (using the product implementation)
 		 */
-		RandomVariableInterface value = (RandomVariableDifferentiableInterface) product.getValue(0.0, monteCarloBlackScholesModel);
+		double[] exerciseDates = new double[] { 0.5, 1.0, 1.5, 2.0 };
+		double[] notionals = new double[] { 1.0, 1.0, 1.0, 1.0 };
+		double[] strikes = new double[] { optionStrike, 1.05*optionStrike, 1.05*optionStrike, 1.05*optionStrike };
+		BermudanOption bermudanOption = new BermudanOption(exerciseDates, notionals, strikes);
+		RandomVariableInterface value = (RandomVariableDifferentiableInterface) bermudanOption.getValue(0.0, monteCarloBlackScholesModel);
 
 		/*
 		 * Calculate sensitivities using AAD
@@ -111,17 +99,16 @@ public class MonteCarloBlackScholesModelSensitivitiesTest {
 
 		Map<String, Object> dataModifiedInitialValue = new HashMap<String, Object>();
 		dataModifiedInitialValue.put("initialValue", modelInitialValue+eps);
-		double deltaFiniteDifference = (product.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedInitialValue)) - valueMonteCarlo)/eps ;
+		double deltaFiniteDifference = (bermudanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedInitialValue)) - valueMonteCarlo)/eps ;
 
 		Map<String, Object> dataModifiedRiskFreeRate = new HashMap<String, Object>();
 		dataModifiedRiskFreeRate.put("riskFreeRate", modelRiskFreeRate+eps);
-		double rhoFiniteDifference = (product.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedRiskFreeRate)) - valueMonteCarlo)/eps ;
+		double rhoFiniteDifference = (bermudanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedRiskFreeRate)) - valueMonteCarlo)/eps ;
 
 		Map<String, Object> dataModifiedVolatility = new HashMap<String, Object>();
 		dataModifiedVolatility.put("volatility", modelVolatility+eps);
-		double vegaFiniteDifference = (product.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedVolatility)) - valueMonteCarlo)/eps ;
+		double vegaFiniteDifference = (bermudanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedVolatility)) - valueMonteCarlo)/eps ;
 
-		System.out.println("Product: " + product.getClass().getSimpleName());
 		System.out.println("value using Monte-Carlo.......: " + valueMonteCarlo);
 		System.out.println("");
 		
