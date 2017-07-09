@@ -313,7 +313,7 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 	}
 
 	public Long getID(){
-		return getOperatorTreeNode().id;
+		return operatorTreeNode.id;
 	}
 
 	public Map<Long, RandomVariableInterface> getGradient() {
