@@ -7,16 +7,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeMap;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import junit.framework.Assert;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
-import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAAD2Factory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv2Factory;
 import net.finmath.montecarlo.automaticdifferentiation.backward.alternative.RandomVariableAADv3Factory;
@@ -34,7 +33,6 @@ public class LevenbergMarquardtSolverTest {
 	@Parameters
     public static Collection<Object[]> data(){
         return Arrays.asList(new Object[][] {
-        	{new RandomVariableDifferentiableAAD2Factory()},
         	{new RandomVariableDifferentiableAADFactory()},
         	{new RandomVariableAADv3Factory()},
         	{new RandomVariableAADv2Factory()}
@@ -129,7 +127,8 @@ public class LevenbergMarquardtSolverTest {
 		System.out.println("average duration per Iteration..............." + (double)totalTime/ ((double)LMSolver.getNumberOfIterations() *1000.0) +"s ");
 		System.out.println("average memory consumption per Iteration....." + (double)totalMem/ ((double)LMSolver.getNumberOfIterations() * Math.pow(10, 6)) +"Mbyte");
 		System.out.println();
-		Assert.assertTrue(LMSolver.getAccuracy() < targetAccuracy );
+
+		Assert.assertEquals(0.0, Math.max(LMSolver.getAccuracy() - targetAccuracy,0.0), 0.0);
 			
 	}
 	
