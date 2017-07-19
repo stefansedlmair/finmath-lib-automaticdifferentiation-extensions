@@ -20,6 +20,7 @@ import net.finmath.functions.AnalyticFormulas;
 import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.BrownianMotion;
 import net.finmath.montecarlo.RandomVariableFactory;
+import net.finmath.montecarlo.assetderivativevaluation.products.AsianOption;
 import net.finmath.montecarlo.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
@@ -34,7 +35,7 @@ import net.finmath.time.TimeDiscretizationInterface;
  * @author Christian Fries
  *
  */
-public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
+public class MonteCarloBlackScholesModelAsianOptionSensitivitiesTest {
 
 	// Model properties
 	private final double	modelInitialValue   = 1.0;
@@ -80,7 +81,7 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 		/*
 		 * Value a call option (using the product implementation)
 		 */
-		EuropeanOption europeanOption = new EuropeanOption(optionMaturity, optionStrike);
+		AsianOption europeanOption = new AsianOption(optionMaturity, optionStrike, new TimeDiscretization(0.5, 1.0, 1.5, 2.0));
 		RandomVariableInterface value = (RandomVariableDifferentiableInterface) europeanOption.getValue(0.0, monteCarloBlackScholesModel);
 
 		/*
@@ -114,10 +115,10 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 		/*
 		 * Calculate sensitivities using analytic formulas
 		 */
-		double valueAnalytic = AnalyticFormulas.blackScholesOptionValue(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double deltaAnalytic = AnalyticFormulas.blackScholesOptionDelta(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double rhoAnalytic = AnalyticFormulas.blackScholesOptionRho(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double vegaAnalytic = AnalyticFormulas.blackScholesOptionVega(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
+		double valueAnalytic = Double.NaN;
+		double deltaAnalytic = Double.NaN;
+		double rhoAnalytic = Double.NaN;
+		double vegaAnalytic = Double.NaN;
 
 		System.out.println("value using Monte-Carlo.......: " + valueMonteCarlo);
 		System.out.println("value using analytic formula..: " + valueAnalytic);

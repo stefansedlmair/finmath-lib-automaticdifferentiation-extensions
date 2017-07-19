@@ -20,6 +20,7 @@ import java.util.stream.DoubleStream;
 import net.finmath.functions.DoubleTernaryOperator;
 import net.finmath.montecarlo.RandomVariable;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
+import net.finmath.stochastic.ConditionalExpectationEstimatorInterface;
 import net.finmath.stochastic.RandomVariableInterface;
 
 /**
@@ -43,52 +44,70 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 		ADD, MULT, DIV, SUB, SQUARED, SQRT, LOG, SIN, COS, EXP, INVERT, CAP, FLOOR, ABS, 
 		ADDPRODUCT, ADDRATIO, SUBRATIO, BARRIER, DISCOUNT, ACCRUE, POW, MIN, MAX, AVERAGE, VARIANCE, 
 		STDEV, STDERROR, SVARIANCE, AVERAGE2, VARIANCE2, 
-		STDEV2, STDERROR2
+		STDEV2, STDERROR2, CONDITIONAL_EXPECTATION
 	}
 
 	private static class OperatorTreeNode {
 		private final Long id;
-		private final OperatorType operator;
+		private final OperatorType operatorType;
 		private final List<OperatorTreeNode> arguments;
 		private final List<RandomVariableInterface> argumentValues;
+		private final Object operator;
 
-		public OperatorTreeNode(OperatorType operator, List<RandomVariableInterface> arguments) {
-			this(operator,
+		public OperatorTreeNode(OperatorType operatorType, List<RandomVariableInterface> arguments, Object operator) {
+			this(operatorType,
 					arguments != null ? arguments.stream().map((RandomVariableInterface x) -> {
 						return (x != null && x instanceof RandomVariableDifferentiableAAD) ? ((RandomVariableDifferentiableAAD)x).getOperatorTreeNode(): null;
 					}).collect(Collectors.toList()) : null,
 							arguments != null ? arguments.stream().map((RandomVariableInterface x) -> {
-						return (x != null && x instanceof RandomVariableDifferentiableAAD) ? ((RandomVariableDifferentiableAAD)x).getValues() : x;
-					}).collect(Collectors.toList()) : null
+								return (x != null && x instanceof RandomVariableDifferentiableAAD) ? ((RandomVariableDifferentiableAAD)x).getValues() : x;
+							}).collect(Collectors.toList()) : null,
+									operator
 					);
 
 		}
-		public OperatorTreeNode(OperatorType operator, List<OperatorTreeNode> arguments, List<RandomVariableInterface> argumentValues) {
+		public OperatorTreeNode(OperatorType operatorType, List<OperatorTreeNode> arguments, List<RandomVariableInterface> argumentValues, Object operator) {
 			super();
 			this.id = indexOfNextRandomVariable.getAndIncrement();
-			this.operator = operator;
+			this.operatorType = operatorType;
 			this.arguments = arguments;
 			// This is the simple modification which reduces memory requirements.
-			this.argumentValues = (operator != null && operator.equals(OperatorType.ADD)) ? null: argumentValues;
-			if(operator != null && operator.equals(OperatorType.ADD)) {
+			this.argumentValues = (operatorType != null && operatorType.equals(OperatorType.ADD)) ? null: argumentValues;
+			this.operator = operator;
+			if(operatorType != null && (operatorType.equals(OperatorType.ADD) || operatorType.equals(OperatorType.SUB))) {
 				// Addition does not need to retain arguments
 				argumentValues = null;
 			}
-			else if(operator != null && operator.equals(OperatorType.ADDPRODUCT)) {
+			else if(operatorType != null && operatorType.equals(OperatorType.AVERAGE)) {
+				// Average does not need to retain arguments
+				argumentValues = null;
+			}
+			else if(operatorType != null && operatorType.equals(OperatorType.MULT)) {
+				// Product only needs to retain factors on differentiables
+				if(arguments.get(0) == null) argumentValues.set(1, null);
+				if(arguments.get(1) == null) argumentValues.set(0, null);
+			}
+			else if(operatorType != null && operatorType.equals(OperatorType.ADDPRODUCT)) {
 				// Addition does not need to retain arguments
 				argumentValues.set(0, null);
 				// Addition of product only needs to retain factors on differentiables
 				if(arguments.get(1) == null) argumentValues.set(2, null);
 				if(arguments.get(2) == null) argumentValues.set(1, null);
 			}
-			else if(operator != null && operator.equals(OperatorType.ACCRUE)) {
+			else if(operatorType != null && operatorType.equals(OperatorType.ACCRUE)) {
 				// Addition of product only needs to retain factors on differentiables
 				if(arguments.get(1) == null && arguments.get(2) == null) argumentValues.set(0, null);
 				if(arguments.get(0) == null && arguments.get(1) == null) argumentValues.set(1, null);
 				if(arguments.get(0) == null && arguments.get(2) == null) argumentValues.set(2, null);
 			}
+			else if(operatorType != null && operatorType.equals(OperatorType.BARRIER)) {
+				if(arguments.get(0) == null) {
+					argumentValues.set(1, null);
+					argumentValues.set(2, null);
+				}
+			}
 		}
-		
+
 		private void propagateDerivativesFromResultToArgument(Map<Long, RandomVariableInterface> derivatives) {
 
 			for(OperatorTreeNode argument : arguments) {
@@ -100,8 +119,15 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 					RandomVariableInterface derivative			= derivatives.get(id);
 					RandomVariableInterface argumentDerivative	= derivatives.get(argumentID);
 
-					// Implementation of AVERAGE (see paper for details).
-					if(operator == OperatorType.AVERAGE) derivative = derivative.average();
+					// Implementation of AVERAGE (see <a href="https://ssrn.com/abstract=3000822">ssrn.com/abstract=3000822</a> for details).
+					if(operatorType == OperatorType.AVERAGE) {
+						derivative = derivative.average();
+					}
+					// Implementation of CONDITIONAL_EXPECTATION (see <a href="https://ssrn.com/abstract=3000822">ssrn.com/abstract=2995695</a> for details).
+					if(operatorType == OperatorType.CONDITIONAL_EXPECTATION) {
+						ConditionalExpectationEstimatorInterface estimator = (ConditionalExpectationEstimatorInterface)operator;
+						derivative = estimator.getConditionalExpectation(derivative);
+					}
 
 					argumentDerivative = argumentDerivative.addProduct(partialDerivative, derivative);
 
@@ -121,7 +147,7 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 
 			RandomVariableInterface resultrandomvariable = null;
 
-			switch(operator) {
+			switch(operatorType) {
 			/* functions with one argument  */
 			case SQUARED:
 				resultrandomvariable = X.mult(2.0);
@@ -142,6 +168,9 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 				resultrandomvariable = X.sin().mult(-1.0);
 				break;
 			case AVERAGE:
+				resultrandomvariable = new RandomVariable(1.0);
+				break;
+			case CONDITIONAL_EXPECTATION:
 				resultrandomvariable = new RandomVariable(1.0);
 				break;
 			case VARIANCE:
@@ -229,7 +258,7 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 				} else if(differentialIndex == 1) {
 					resultrandomvariable = Z.invert();
 				} else {
-					resultrandomvariable = Y.div(Z.squared());
+					resultrandomvariable = Y.div(Z.squared()).mult(-1.0);
 				}
 				break;
 			case SUBRATIO:
@@ -238,7 +267,7 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 				} else if(differentialIndex == 1) {
 					resultrandomvariable = Z.invert().mult(-1.0);
 				} else {
-					resultrandomvariable = Y.div(Z.squared()).mult(-1.0);
+					resultrandomvariable = Y.div(Z.squared());
 				}
 				break;
 			case ACCRUE:
@@ -254,14 +283,21 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 				if(differentialIndex == 0) {
 					resultrandomvariable = Y.mult(Z).add(1.0).invert();
 				} else if(differentialIndex == 1) {
-					resultrandomvariable = X.mult(Z).div(Y.mult(Z).add(1.0).squared());
+					resultrandomvariable = X.mult(Z).div(Y.mult(Z).add(1.0).squared()).mult(-1.0);
 				} else {
-					resultrandomvariable = X.mult(Y).div(Y.mult(Z).add(1.0).squared());
+					resultrandomvariable = X.mult(Y).div(Y.mult(Z).add(1.0).squared()).mult(-1.0);
 				}
 				break;
 			case BARRIER:
 				if(differentialIndex == 0) {
-					resultrandomvariable = X.apply(x -> (x == 0.0) ? Double.POSITIVE_INFINITY : 0.0);
+					/*
+					 * Experimental version - This should be specified as a parameter.
+					 */
+					resultrandomvariable = Y.sub(Z);
+					double epsilon = 0.2*X.getStandardDeviation();
+					resultrandomvariable = resultrandomvariable.mult(X.barrier(X.add(epsilon/2), new RandomVariable(1.0), new RandomVariable(0.0)));
+					resultrandomvariable = resultrandomvariable.mult(X.barrier(X.sub(epsilon/2), new RandomVariable(0.0), new RandomVariable(1.0)));
+					resultrandomvariable = resultrandomvariable.div(epsilon);
 				} else if(differentialIndex == 1) {
 					resultrandomvariable = X.barrier(X, new RandomVariable(1.0), new RandomVariable(0.0));
 				} else {
@@ -301,7 +337,14 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 	private RandomVariableDifferentiableAAD(RandomVariableInterface values, List<RandomVariableInterface> arguments, OperatorType operator) {
 		super();
 		this.values = values;
-		this.operatorTreeNode = new OperatorTreeNode(operator, arguments);
+		this.operatorTreeNode = new OperatorTreeNode(operator, arguments, null);
+	}
+
+	public RandomVariableDifferentiableAAD(RandomVariableInterface values, List<RandomVariableInterface> arguments, ConditionalExpectationEstimatorInterface estimator,
+			OperatorType operator) {
+		super();
+		this.values = values;
+		this.operatorTreeNode = new OperatorTreeNode(operator, arguments, estimator);
 	}
 
 	public RandomVariableInterface getRandomVariable() {
@@ -707,6 +750,15 @@ public class RandomVariableDifferentiableAAD implements RandomVariableDifferenti
 				getValues().average(),
 				Arrays.asList(new RandomVariableInterface[]{ this }),
 				OperatorType.AVERAGE);
+	}
+
+	public RandomVariableInterface getConditionalExpectation(ConditionalExpectationEstimatorInterface estimator) {
+		return new RandomVariableDifferentiableAAD(
+				getValues().average(),
+				Arrays.asList(new RandomVariableInterface[]{ this }),
+				estimator,
+				OperatorType.CONDITIONAL_EXPECTATION);
+
 	}
 
 	@Override
