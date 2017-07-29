@@ -1,12 +1,18 @@
-# finmath-lib automatic differentiation extensions
-- - - -
+About finmath-lib automatic differentiation extensions
+==========
+
+****************************************
+
 **Enabling finmath lib to utilize automatic differentiation algorithms (e.g. AAD).**
-- - - -
+
+****************************************
+
 This project implements a [stochastic automatic differentiation](http://ssrn.com/abstract=2995695).
 
 The implementation is fast, memory efficient and thread safe. It handles automatic differentiation of the conditional expectation (American Monte-Carlo), see http://ssrn.com/abstract=3000822.
 
-The project provides an interface <code>RandomVariableDifferentiableInterface</code>
+The project extends [finmath lib](http://finmath.net/finmath-lib) by
+providing an interface <code>RandomVariableDifferentiableInterface</code>
 for random variables which provide automatic differentiation.
 The interface extends <code>RandomVariableInterface</code> and
 hence allows to use auto-diff in all Monte-Carlo contexts
@@ -98,3 +104,24 @@ AAD on the Monte-Carlo valuation
 	double rhoAAD = derivative.get(riskFreeRate.getID()).getAverage();
 	double vegaAAD = derivative.get(volatility.getID()).getAverage();
 
+
+
+License
+-------
+
+The code of "finmath lib" and "finmath experiments" (packages `net.finmath.*`) are distributed under
+the [Apache License version 2.0][], unless otherwise explicitly stated.
+ 
+Documentation
+-------
+
+For documentation please check out
+
+- the [finmath lib API documentation]
+- the unit tests: they also serve as examples on how to perform specific tasks.
+- the [finmath.net special topics]: where you also find spreadsheets which perform a step-by-step object creation and solve specific problems.
+
+  [finmath lib Project documentation]: http://www.finmath.net/finmath-lib
+  [finmath lib API documentation]: http://www.finmath.net/finmath-lib/apidocs/
+  [finmath.net special topics]: http://www.finmath.net/topics
+  [Apache License version 2.0]: http://www.apache.org/licenses/LICENSE-2.0.html

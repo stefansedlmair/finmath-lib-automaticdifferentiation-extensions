@@ -6,18 +6,18 @@
 
 package net.finmath.montecarlo.assetderivativevaluation;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import net.finmath.exception.CalculationException;
 import net.finmath.functions.AnalyticFormulas;
+import net.finmath.montecarlo.AbstractRandomVariableFactory;
 import net.finmath.montecarlo.BrownianMotion;
 import net.finmath.montecarlo.RandomVariableFactory;
+import net.finmath.montecarlo.assetderivativevaluation.products.DigitalOption;
 import net.finmath.montecarlo.assetderivativevaluation.products.EuropeanOption;
 import net.finmath.montecarlo.automaticdifferentiation.RandomVariableDifferentiableInterface;
 import net.finmath.montecarlo.automaticdifferentiation.backward.RandomVariableDifferentiableAADFactory;
@@ -32,7 +32,7 @@ import net.finmath.time.TimeDiscretizationInterface;
  * @author Christian Fries
  *
  */
-public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
+public class MonteCarloBlackScholesModelDigitalOptionSensitivitiesTest {
 
 	// Model properties
 	private final double	modelInitialValue   = 1.0;
@@ -40,10 +40,10 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 	private final double	modelVolatility     = 0.30;
 
 	// Process discretization properties
-	private final int		numberOfPaths		= 20000;
+	private final int		numberOfPaths		= 1000000;
 	private final int		numberOfTimeSteps	= 10;
 	private final double	deltaT				= 0.5;
-
+	
 	private final int		seed				= 31415;
 
 	// Product properties
@@ -53,9 +53,6 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 
 	@Test
 	public void testProductAADSensitivities() throws CalculationException {
-
-		memoryUsageReset();
-
 		RandomVariableDifferentiableAADFactory randomVariableFactory = new RandomVariableDifferentiableAADFactory(new RandomVariableFactory());
 
 		// Generate independent variables (quantities w.r.t. to which we like to differentiate)
@@ -78,49 +75,52 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 		/*
 		 * Value a call option (using the product implementation)
 		 */
-		EuropeanOption europeanOption = new EuropeanOption(optionMaturity, optionStrike);
-		RandomVariableInterface value = (RandomVariableDifferentiableInterface) europeanOption.getValue(0.0, monteCarloBlackScholesModel);
+		DigitalOption digitalOption = new DigitalOption(optionMaturity, optionStrike);
+		RandomVariableInterface value = (RandomVariableDifferentiableInterface) digitalOption.getValue(0.0, monteCarloBlackScholesModel);
 
 		/*
 		 * Calculate sensitivities using AAD
 		 */
 		Map<Long, RandomVariableInterface> derivative = ((RandomVariableDifferentiableInterface)value).getGradient();
-
+		
 		double valueMonteCarlo = value.getAverage();
 		double deltaAAD = derivative.get(initialValue.getID()).getAverage();
 		double rhoAAD = derivative.get(riskFreeRate.getID()).getAverage();
 		double vegaAAD = derivative.get(volatility.getID()).getAverage();
-
+		
 		/*
 		 * Calculate sensitivities using finite differences
 		 */
+		
+		double eps = 1E-3;
 
-		double eps = 1E-6;
-
+		double epsDelta = eps;
 		Map<String, Object> dataModifiedInitialValue = new HashMap<String, Object>();
 		dataModifiedInitialValue.put("initialValue", modelInitialValue+eps);
-		double deltaFiniteDifference = (europeanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedInitialValue)) - valueMonteCarlo)/eps ;
+		double deltaFiniteDifference = (digitalOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedInitialValue)) - valueMonteCarlo)/epsDelta;
 
+		double epsRho = eps/100;
 		Map<String, Object> dataModifiedRiskFreeRate = new HashMap<String, Object>();
-		dataModifiedRiskFreeRate.put("riskFreeRate", modelRiskFreeRate+eps);
-		double rhoFiniteDifference = (europeanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedRiskFreeRate)) - valueMonteCarlo)/eps ;
+		dataModifiedRiskFreeRate.put("riskFreeRate", modelRiskFreeRate+epsRho);
+		double rhoFiniteDifference = (digitalOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedRiskFreeRate)) - valueMonteCarlo)/epsRho ;
 
+		double epsVega = eps/10;
 		Map<String, Object> dataModifiedVolatility = new HashMap<String, Object>();
-		dataModifiedVolatility.put("volatility", modelVolatility+eps);
-		double vegaFiniteDifference = (europeanOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedVolatility)) - valueMonteCarlo)/eps ;
+		dataModifiedVolatility.put("volatility", modelVolatility+epsVega);
+		double vegaFiniteDifference = (digitalOption.getValue(monteCarloBlackScholesModel.getCloneWithModifiedData(dataModifiedVolatility)) - valueMonteCarlo)/epsVega ;
 
 		/*
 		 * Calculate sensitivities using analytic formulas
 		 */
-		double valueAnalytic = AnalyticFormulas.blackScholesOptionValue(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double deltaAnalytic = AnalyticFormulas.blackScholesOptionDelta(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double rhoAnalytic = AnalyticFormulas.blackScholesOptionRho(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
-		double vegaAnalytic = AnalyticFormulas.blackScholesOptionVega(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
+		double valueAnalytic = AnalyticFormulas.blackScholesDigitalOptionValue(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
+		double deltaAnalytic = AnalyticFormulas.blackScholesDigitalOptionDelta(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
+		double rhoAnalytic	= AnalyticFormulas.blackScholesDigitalOptionRho(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
+		double vegaAnalytic	= AnalyticFormulas.blackScholesDigitalOptionVega(modelInitialValue, modelRiskFreeRate, modelVolatility, optionMaturity, optionStrike);
 
 		System.out.println("value using Monte-Carlo.......: " + valueMonteCarlo);
 		System.out.println("value using analytic formula..: " + valueAnalytic);
 		System.out.println("");
-
+		
 		System.out.println("delta using adj. auto diff....: " + deltaAAD);
 		System.out.println("delta using finite differences: " + deltaFiniteDifference);
 		System.out.println("delta using analytic formula..: " + deltaAnalytic);
@@ -136,22 +136,6 @@ public class MonteCarloBlackScholesModelEuropeanOptionSensitivitiesTest {
 		System.out.println("vega using analytic formula..: " + vegaAnalytic);
 		System.out.println("");
 
-		System.out.println(memoryUsagePeak()/1024/1024);
-		Assert.assertEquals(deltaFiniteDifference, deltaAAD, 0.005);
-	}
-
-	private void memoryUsageReset() {
-		for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
-			pool.resetPeakUsage();
-		}
-	}
-
-	private long memoryUsagePeak() {
-		long sumOfPeak = 0;
-		for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
-			MemoryUsage peak = pool.getPeakUsage();
-			sumOfPeak += peak.getUsed();
-		}		
-		return sumOfPeak;
+//		Assert.assertEquals(valueAnalytic, value, 0.005);
 	}
 }
