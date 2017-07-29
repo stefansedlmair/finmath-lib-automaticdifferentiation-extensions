@@ -521,14 +521,6 @@ public class RandomVariableAADv3 implements RandomVariableDifferentiableInterfac
 	}
 
 	/* (non-Javadoc)
-	 * @see net.finmath.stochastic.RandomVariableInterface#getRealizations(int)
-	 */
-	@Override
-	public double[] getRealizations(int numberOfPaths) {
-		return valuesOf(this).getRealizations(numberOfPaths);
-	}
-
-	/* (non-Javadoc)
 	 * @see net.finmath.stochastic.RandomVariableInterface#getMin()
 	 */
 	@Override
@@ -906,14 +898,6 @@ public class RandomVariableAADv3 implements RandomVariableDifferentiableInterfac
 	@Override
 	public RandomVariableInterface isNaN() {
 		return valuesOf(this).isNaN();
-	}
-
-	/* (non-Javadoc)
-	 * @see net.finmath.stochastic.RandomVariableInterface#getMutableCopy()
-	 */
-	@Override
-	public RandomVariableInterface getMutableCopy() {
-		return this;
 	}
 
 	@Override
